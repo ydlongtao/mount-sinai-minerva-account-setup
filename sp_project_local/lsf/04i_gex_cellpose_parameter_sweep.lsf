@@ -1,0 +1,32 @@
+#!/bin/bash
+#BSUB -J sp_gex_sweep_R4
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -m "lg05g29 lg03e15 lg05e04"
+#BSUB -n 1
+#BSUB -gpu num=1
+#BSUB -R "rusage[mem=32000]"
+#BSUB -W 03:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+GPU_ENV=/sc/arion/work/huangl21/conda_envs/omicverse-gpu
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-1}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "$GPU_ENV"
+module load cuda || true
+set -a
+source "$PROJECT_HOME/config/paths.env"
+set +a
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}_gex_sweep
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+
+python -u "$PROJECT_HOME/scripts/16_gex_cellpose_parameter_sweep.py" \
+  --input "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_he/SC000895-R4_002um_cellpose_he.h5ad" \
+  --output-dir "$PROJECT_HOME/results/pilot_v2/SC000895-R4/gex_parameter_sweep" \
+  --mpp 0.3239732935 --gpu

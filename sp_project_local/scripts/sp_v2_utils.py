@@ -71,6 +71,141 @@ def attach_barcode_spatial(adata) -> None:
     adata.uns["spatial_coordinate_unit"] = "micrometer"
 
 
+def read_visium_hd_compat(bin_dir: Path, source_image: Path, work_dir: Path):
+    """Load Visium HD output through OmicVerse's bin2cell-compatible reader.
+
+    Some Cell Ranger HD outputs contain barcode-encoded coordinates but omit
+    the legacy ``tissue_positions_list.csv`` and scale-factor files.  This
+    adapter materializes those small metadata files in scratch, leaving the
+    raw directory untouched.
+    """
+    import h5py
+    import pandas as pd
+    from PIL import Image
+    import omicverse as ov
+
+    bin_dir = Path(bin_dir)
+    source_image = Path(source_image)
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    h5_path = bin_dir / "filtered_feature_bc_matrix.h5"
+    if not h5_path.exists():
+        raise FileNotFoundError(h5_path)
+    if not source_image.exists():
+        raise FileNotFoundError(source_image)
+
+    with h5py.File(h5_path, "r") as handle:
+        barcodes = [x.decode() if isinstance(x, bytes) else str(x)
+                    for x in handle["matrix/barcodes"][:]]
+    parsed = [BARCODE_PATTERN.match(barcode) for barcode in barcodes]
+    if any(match is None for match in parsed):
+        raise ValueError("Visium HD barcode format is not recognized")
+    sizes = {int(match.group(1)) for match in parsed if match is not None}
+    if len(sizes) != 1:
+        raise ValueError(f"Mixed Visium HD bin sizes: {sorted(sizes)}")
+    bin_size = sizes.pop()
+    x_um = np.array([int(match.group(3)) * bin_size + bin_size / 2
+                     for match in parsed], dtype=np.float64)
+    y_um = np.array([int(match.group(2)) * bin_size + bin_size / 2
+                     for match in parsed], dtype=np.float64)
+
+    with Image.open(source_image) as image:
+        width, height = image.size
+        hires = np.asarray(image.convert("RGB"))
+        lowres = np.asarray(image.resize((600, 600)))
+    # Fit the barcode coordinate extent inside the supplied morphology image.
+    # The resulting scale is recorded explicitly and used by bin2cell.
+    pixel_per_um = min((width - 1) / max(x_um), (height - 1) / max(y_um))
+    mpp_source = 1.0 / pixel_per_um
+    px_x = x_um * pixel_per_um
+    px_y = y_um * pixel_per_um
+
+    compat_dir = work_dir / f"visium_hd_compat_{bin_size:03d}um"
+    spatial_dir = compat_dir / "spatial"
+    spatial_dir.mkdir(parents=True, exist_ok=True)
+    link_h5 = compat_dir / "filtered_feature_bc_matrix.h5"
+    if not link_h5.exists():
+        link_h5.symlink_to(h5_path)
+    link_hires = spatial_dir / "tissue_hires_image.png"
+    if not link_hires.exists():
+        link_hires.symlink_to(source_image)
+    lowres_path = spatial_dir / "tissue_lowres_image.png"
+    if not lowres_path.exists():
+        Image.fromarray(lowres).save(lowres_path)
+
+    positions = pd.DataFrame({
+        "barcode": barcodes,
+        "in_tissue": 1,
+        "array_row": [int(match.group(2)) for match in parsed],
+        "array_col": [int(match.group(3)) for match in parsed],
+        "pxl_col_in_fullres": px_x,
+        "pxl_row_in_fullres": px_y,
+    }).set_index("barcode")
+    positions.to_csv(spatial_dir / "tissue_positions.csv")
+    (spatial_dir / "scalefactors_json.json").write_text(json.dumps({
+        "microns_per_pixel": mpp_source,
+        "tissue_hires_scalef": 1.0,
+        "tissue_lowres_scalef": 600.0 / max(width, height),
+        "spot_diameter_fullres": float(bin_size * pixel_per_um),
+    }) + "\n")
+
+    adata = ov.space.read_visium_10x(
+        str(compat_dir),
+        source_image_path=str(source_image),
+    )
+    adata.var_names_make_unique()
+    adata.obsm["spatial_um"] = np.column_stack([x_um, y_um]).astype(np.float32)
+    adata.uns["spatial_coordinate_source"] = "visium_hd_barcode_scaled_to_morphology"
+    adata.uns["spatial_coordinate_unit"] = "fullres_pixels"
+    adata.uns["visium_hd_source_mpp"] = float(mpp_source)
+    return adata
+
+
+def crop_visium_hd_um(adata, x_range_um, y_range_um, output_dir: Path):
+    """Crop a loaded HD object and its morphology image using micrometer bounds."""
+    from PIL import Image
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if "spatial_um" not in adata.obsm:
+        raise KeyError("spatial_um is required for micrometer-based cropping")
+    coords_um = np.asarray(adata.obsm["spatial_um"])
+    x0, x1 = map(float, x_range_um)
+    y0, y1 = map(float, y_range_um)
+    mask = ((coords_um[:, 0] >= x0) & (coords_um[:, 0] < x1) &
+            (coords_um[:, 1] >= y0) & (coords_um[:, 1] < y1))
+    cropped = adata[mask].copy()
+    library = list(cropped.uns["spatial"].keys())[0]
+    spatial = np.asarray(cropped.obsm["spatial"], dtype=np.float32)
+    source_mpp = float(cropped.uns["spatial"][library]["scalefactors"]["microns_per_pixel"])
+    px_per_um = 1.0 / source_mpp
+    px_x0, px_y0 = int(np.floor(x0 * px_per_um)), int(np.floor(y0 * px_per_um))
+    px_x1, px_y1 = int(np.ceil(x1 * px_per_um)), int(np.ceil(y1 * px_per_um))
+    spatial[:, 1] -= px_x0
+    spatial[:, 0] -= px_y0
+    cropped.obsm["spatial"] = spatial
+    cropped.obsm["spatial_um"] = coords_um[mask] - np.array([x0, y0])
+
+    metadata = cropped.uns["spatial"][library]
+    source_path = Path(metadata["metadata"]["source_image_path"])
+    with Image.open(source_path) as image:
+        image = image.convert("RGB")
+        px_x1 = min(px_x1, image.width)
+        px_y1 = min(px_y1, image.height)
+        crop_image = image.crop((px_x0, px_y0, px_x1, px_y1))
+    crop_path = output_dir / "cropped_source_image.png"
+    crop_image.save(crop_path)
+    cropped.uns["spatial"][library]["images"]["hires"] = np.asarray(crop_image)
+    cropped.uns["spatial"][library]["images"]["lowres"] = np.asarray(
+        crop_image.resize((max(1, crop_image.width // 10), max(1, crop_image.height // 10)))
+    )
+    cropped.uns["spatial"][library]["scalefactors"]["tissue_hires_scalef"] = 1.0
+    cropped.uns["spatial"][library]["scalefactors"]["tissue_lowres_scalef"] = 0.1
+    cropped.uns["spatial"][library]["metadata"]["source_image_path"] = str(crop_path)
+    cropped.uns["crop_um"] = {"x_range": [x0, x1], "y_range": [y0, y1]}
+    return cropped
+
+
 def candidate_qc_thresholds(obs) -> dict[str, float]:
     positive = obs.loc[obs["total_counts"] > 0]
     if positive.empty:

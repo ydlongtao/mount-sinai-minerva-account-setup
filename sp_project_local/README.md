@@ -46,6 +46,49 @@ logs/
 
 Continue only after preflight passes.
 
+## Current Pilot Status
+
+The validated pilot sample is `SC000895-R4` from the 10x Visium HD human
+prostate cancer dataset.
+
+The current branch includes:
+
+- v2 pilot QC and modeling at `square_016um` with mapped high-resolution review
+  at `square_008um`.
+- Crop/rotate testing for the Visium HD analysis window.
+- H&E Cellpose segmentation on the cropped `square_002um` object.
+- bin2cell aggregation to cell-level objects.
+- A patched Space Ranger-style GeoJSON export that supports both `Polygon` and
+  `MultiPolygon` geometries via Shapely. This avoids the OmicVerse simple WKT
+  parser limitation that only exported simple polygons.
+- A raw-count export step that re-aggregates counts from the original
+  `square_002um/filtered_feature_bc_matrix.h5` instead of exporting normalized
+  float values.
+
+Local result downloads and generated reports are intentionally ignored by git
+under `sp_project_local/local_results/`.
+
+## Cellpose / bin2cell Pilot Order
+
+Run these after the v2 pilot inputs are present on Minerva:
+
+```bash
+cd /sc/arion/work/huangl21/sp_project
+bsub < lsf/04g_cellpose_preflight.lsf
+bsub < lsf/04d_pilot_crop_rotate.lsf
+bsub < lsf/04e_pilot_cellpose_he.lsf
+bsub < lsf/04f_pilot_cellpose_gex_bin2cell.lsf
+bsub < lsf/04h_export_cellpose_raw_counts.lsf
+bsub < lsf/04i_gex_cellpose_parameter_sweep.lsf
+bsub -w "done(<SWEEP_JOB_ID>)" < lsf/04j_cellpose_qc_marker_report.lsf
+```
+
+The successful cellpose/bin2cell pilot produced `879` cell-level objects and a
+complete GeoJSON with `879` features and `0` skipped geometries.
+
 ## Scope
 
-Version 1 uses `square_008um` as the primary binned resolution and segmented cell output as a parallel read/process check. `square_016um` is recorded in the manifest for quick comparison. `square_002um`, BAM, molecule info, and cloupe files are intentionally not processed in this first pass.
+BAM, molecule info, and cloupe files are not processed in this pilot branch.
+The `square_002um` data are used only for the crop-level Cellpose/bin2cell
+pilot; broader all-sample production should be submitted only after reviewing
+the pilot QC/marker report.
