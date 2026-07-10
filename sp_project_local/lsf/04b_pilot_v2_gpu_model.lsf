@@ -1,0 +1,40 @@
+#!/bin/bash
+#BSUB -J sp_pilot_v2_gpu_R4
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -m lg02e02
+#BSUB -n 4
+#BSUB -gpu num=1
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=16000]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+GPU_ENV=/sc/arion/work/huangl21/conda_envs/omicverse-gpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "$GPU_ENV"
+module load cuda || true
+set -a
+source "$PROJECT_HOME/config/paths.env"
+set +a
+export SP_PROJECT_WORK_V2="$PROJECT_HOME/work_v2"
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}_v2_gpu
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs" "$PROJECT_HOME/results/pilot_v2" "$SP_PROJECT_WORK_V2"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+export PYTHONUNBUFFERED=1
+hostname
+nvidia-smi
+python - <<'PY'
+import os
+import cupy
+import rapids_singlecell
+print("CUDA_VISIBLE_DEVICES =", os.environ.get("CUDA_VISIBLE_DEVICES"))
+print("GPU count =", cupy.cuda.runtime.getDeviceCount())
+print("rapids_singlecell import = OK")
+PY
+python -u "$PROJECT_HOME/scripts/04_pilot_visium_hd_v2_model.py"

@@ -1,0 +1,16 @@
+.DS_Store
+*.pyc
+__pycache__/
+sp_project_local/local_results/
+sp_project_local/results/
+sp_project_local/logs/
+sp_project_local/work/
+sp_project_local/work_v2/
+sp_project_local/*.h5ad
+sp_project_local/*.h5
+sp_project_local/*.bam
+sp_project_local/*.bai
+sp_project_local/*.cloupe
+sp_project_local/*.svs
+sp_project_local/*.tif
+sp_project_local/*.tiff

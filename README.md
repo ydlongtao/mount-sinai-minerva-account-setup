@@ -365,3 +365,25 @@ continued with `uv pip` and successfully installed the Python packages.
 - OmicVerse installation guide: https://omicverse.readthedocs.io/en/latest/Installation_guild.html
 - scop GitHub repository: https://github.com/mengxu98/scop
 - scop documentation: https://mengxu98.github.io/scop/
+
+## Visium HD Prostate Cancer Project
+
+The reproducible 10x Visium HD analysis package is archived under
+sp_project_local/. It contains the Python scripts, LSF job wrappers, marker
+panels, monitoring notebook, runbook, and local report generator used for the
+Minerva pilot analysis of a human prostate cancer sample.
+
+Raw data remain read-only at
+/sc/arion/projects/DiseaseGeneCell/Huang_lab_data/SpatialTranscriptome.
+Temporary files use /sc/arion/scratch/huangl21/sp_project/. LSF jobs use the
+acc_DiseaseGeneCell project account.
+
+The validated pilot workflow uses 16 um bins for global QC, PCA, CAGRA
+neighbors, UMAP, and Leiden, then maps labels to 8 um bins for high-resolution
+spatial review. The tested GPU execution used an H100 node because the CUDA 13
+RAPIDS environment is not appropriate for V100/Volta nodes.
+
+Large H5AD files, raw matrices, BAM files, local results, logs, and generated
+work directories are intentionally excluded from GitHub. See
+sp_project_local/docs/archive_manifest.md for the archive boundary and local
+result paths.

@@ -94,3 +94,24 @@ PY
   build details.
 - Keep OmicVerse and scop in separate environments to reduce dependency
   conflicts.
+
+## Visium HD Archive Rules
+
+This repository also contains the reproducible Visium HD prostate cancer pilot
+under sp_project_local/. Maintain code and operational documentation, not data.
+
+- Keep v1 and v2 scripts versioned; do not overwrite a validated workflow
+  silently.
+- Use 16 um for global pilot modeling and 8 um for mapped high-resolution
+  review unless the analysis plan is explicitly revised.
+- Keep #BSUB -P acc_DiseaseGeneCell in every production LSF script.
+- Keep raw data read-only and put temporary files under
+  /sc/arion/scratch/huangl21/sp_project/.
+- Treat H5AD structure checks, graph connectivity, and report generation as
+  required validation steps.
+- Do not commit local_results/, results/, logs/, work/, H5AD, BAM/CRAM, SVS,
+  or credentials.
+
+The successful v2 GPU pilot ran on an H100 node with CUDA 13 RAPIDS. GPU
+Leiden may fall back to Scanpy igraph when the GPU Dask stack is incompatible;
+this behavior must be recorded in run_state.json.

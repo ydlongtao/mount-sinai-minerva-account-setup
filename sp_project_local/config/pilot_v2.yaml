@@ -1,0 +1,15 @@
+{
+  "sample_id": "SC000895-R4",
+  "main_resolution": "016um",
+  "mapping_resolution": "008um",
+  "qc_mode": "flag_only",
+  "n_top_genes": 3000,
+  "n_pcs": 30,
+  "neighbor_algorithm": "cagra",
+  "neighbor_candidates": [15, 30, 50],
+  "largest_component_min_fraction": 0.99,
+  "leiden_resolutions": [0.02, 0.05, 0.1, 0.2, 0.4],
+  "plot_max_points": 100000,
+  "plot_max_categories": 20,
+  "random_state": 0
+}
