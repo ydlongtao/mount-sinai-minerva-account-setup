@@ -1,0 +1,22 @@
+#!/bin/bash
+#BSUB -J sp_diag_td006859
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 2
+#BSUB -R "rusage[mem=16000]"
+#BSUB -W 02:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+export SP_PROJECT_HOME="$PROJECT_HOME"
+export SP_PROJECT_SCRATCH=/sc/arion/scratch/huangl21/sp_project
+export TMPDIR="${SP_PROJECT_SCRATCH}/${LSB_JOBID:-manual}"
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs" "$PROJECT_HOME/results/debug_td006859/diagnostic"
+export PYTHONPATH="${PROJECT_HOME}/scripts:${PYTHONPATH:-}"
+
+python "$PROJECT_HOME/scripts/31_diagnose_td006859.py"

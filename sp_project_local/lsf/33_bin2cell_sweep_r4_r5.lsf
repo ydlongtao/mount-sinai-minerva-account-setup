@@ -1,0 +1,31 @@
+#!/bin/bash
+#BSUB -J "sp_bin2cell_sweep[1-6]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 4
+#BSUB -R "span[hosts=1] rusage[mem=24000]"
+#BSUB -W 02:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/omicverse-gpu
+source "$PROJECT_HOME/scripts/v2_no_legacy_env.sh"
+export SP_PROJECT_MANIFEST="$PROJECT_HOME/config/sample_manifest_v2_corrected.csv"
+export SP_PROJECT_BATCH_RESULTS="$PROJECT_HOME/results/batch_v2_corrected"
+export SP_PROJECT_BATCH_WORK="$PROJECT_HOME/work/batch_v2_corrected"
+export SP_PROJECT_CONFIG="$PROJECT_HOME/config/batch_analysis_v2_corrected.yaml"
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}_${LSB_JOBINDEX:-manual}"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+case "$LSB_JOBINDEX" in
+1) export SP_SWEEP_SAMPLE=SC000895-R4; export SP_SWEEP_TAG=flow02_probm2;;
+2) export SP_SWEEP_SAMPLE=SC000895-R4; export SP_SWEEP_TAG=flow04_prob0;;
+3) export SP_SWEEP_SAMPLE=SC000895-R4; export SP_SWEEP_TAG=flow06_prob1;;
+4) export SP_SWEEP_SAMPLE=SC000895-R5; export SP_SWEEP_TAG=flow02_probm2;;
+5) export SP_SWEEP_SAMPLE=SC000895-R5; export SP_SWEEP_TAG=flow04_prob0;;
+6) export SP_SWEEP_SAMPLE=SC000895-R5; export SP_SWEEP_TAG=flow06_prob1;;
+*) exit 2;; esac
+python -u "$PROJECT_HOME/scripts/45_bin2cell_sweep_compare.py"

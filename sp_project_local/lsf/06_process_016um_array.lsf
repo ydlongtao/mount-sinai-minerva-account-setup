@@ -1,0 +1,23 @@
+#!/bin/bash
+#BSUB -J sp_016um[1-10]
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 4
+#BSUB -R "span[hosts=1] rusage[mem=16000]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+export SP_PROJECT_HOME="$PROJECT_HOME"
+export SP_PROJECT_SCRATCH=/sc/arion/scratch/huangl21/sp_project
+export TMPDIR="${SP_PROJECT_SCRATCH}/${LSB_JOBID:-manual}.${LSB_JOBINDEX:-0}"
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export PYTHONPATH="${PROJECT_HOME}/scripts:${PYTHONPATH:-}"
+export OMP_NUM_THREADS="${LSB_DJOB_NUMPROC:-4}"
+
+python "$PROJECT_HOME/scripts/20_process_016um_each_sample.py" --sample-index "${LSB_JOBINDEX}"

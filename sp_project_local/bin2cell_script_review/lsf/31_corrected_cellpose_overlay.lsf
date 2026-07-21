@@ -1,0 +1,24 @@
+#!/bin/bash
+#BSUB -J sp_corrected_overlay
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 2
+#BSUB -R "span[hosts=1] rusage[mem=8000]"
+#BSUB -W 00:30
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.0.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.0.stderr
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+source "$PROJECT_HOME/scripts/v2_no_legacy_env.sh"
+export SP_PROJECT_MANIFEST="$PROJECT_HOME/config/sample_manifest_v2_corrected.csv"
+export SP_PROJECT_BATCH_RESULTS="$PROJECT_HOME/results/batch_v2_corrected"
+export SP_PROJECT_BATCH_WORK="$PROJECT_HOME/work/batch_v2_corrected"
+export SP_PROJECT_CONFIG="$PROJECT_HOME/config/batch_analysis_v2_corrected.yaml"
+export SP_PROJECT_INPUT_BATCH_WORK="$PROJECT_HOME/work/batch"
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}"
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+python "$PROJECT_HOME/scripts/42_make_corrected_cellpose_overlay.py"

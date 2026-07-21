@@ -1,0 +1,32 @@
+#!/bin/bash
+#BSUB -J sp_pilot_cellpose_he_R4
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -m "lg02e02 lg02e09 lg02e10 lg02e15 lg03e02 lg03e04 lg03e06 lg03e08 lg03e09 lg03e10 lg03e13 lg03e15 lg05e04 lg05e05 lg05e09 lg05e14 lg05g29 lg06g28"
+#BSUB -n 4
+#BSUB -gpu num=1
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=64000]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+GPU_ENV=/sc/arion/work/huangl21/conda_envs/omicverse-gpu
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "$GPU_ENV"
+module load cuda || true
+set -a
+source "$PROJECT_HOME/config/paths.env"
+set +a
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}_cellpose_he
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs" "$PROJECT_HOME/results/pilot_v2/cellpose_he"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+python -u "$PROJECT_HOME/scripts/12_pilot_cellpose_he.py" \
+  --bin-dir "$SP_RAW/wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/SC000895_Kuan_lin_Huang_T643/SC000895-R4/outs/binned_outputs/square_002um" \
+  --source-image "$SP_RAW/wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/SC000895_Kuan_lin_Huang_T643/SC000895-R4/outs/spatial/tissue_hires_image.png" \
+  --output-dir "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_he" \
+  --x-range 2000 3000 --y-range 2000 3000 --mpp 0.3239732935 --gpu

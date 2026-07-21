@@ -1,0 +1,26 @@
+#!/bin/bash
+#BSUB -J sp_corrected_bin2cell_qc
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 4
+#BSUB -R "span[hosts=1] rusage[mem=24000]"
+#BSUB -W 02:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.0.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.0.stderr
+# 中文说明：R9 修正版 bin2cell + QC；使用 CPU 计算，不申请 GPU。
+# 可配置环境用于规避 CPU omicverse 环境缺少 cv2 的问题。
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "${SP_CORRECTED_CONDA_ENV:-omicverse}"
+source "$PROJECT_HOME/scripts/v2_no_legacy_env.sh"
+export SP_PROJECT_MANIFEST="$PROJECT_HOME/config/sample_manifest_v2_corrected.csv"
+export SP_PROJECT_BATCH_RESULTS="$PROJECT_HOME/results/batch_v2_corrected"
+export SP_PROJECT_BATCH_WORK="$PROJECT_HOME/work/batch_v2_corrected"
+export SP_PROJECT_CONFIG="$PROJECT_HOME/config/batch_analysis_v2_corrected.yaml"
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}"
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+python "$PROJECT_HOME/scripts/23_bin2cell_raw_counts_each_sample.py" --sample-id "${SP_CORRECTED_SAMPLE:?Set SP_CORRECTED_SAMPLE}" --force
+python "$PROJECT_HOME/scripts/24_cell_level_qc_marker_each_sample.py" --sample-id "$SP_CORRECTED_SAMPLE"

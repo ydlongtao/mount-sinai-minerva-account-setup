@@ -1,0 +1,19 @@
+#!/bin/bash
+#BSUB -J sp_v2_integrate_016um
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 8
+#BSUB -R "span[hosts=1] rusage[mem=24000]"
+#BSUB -W 12:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+source "$PROJECT_HOME/scripts/v2_no_legacy_env.sh"
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}"
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-8}
+python "$PROJECT_HOME/scripts/25_integrate_016um_samples.py"

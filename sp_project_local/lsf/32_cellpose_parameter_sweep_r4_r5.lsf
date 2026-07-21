@@ -1,0 +1,41 @@
+#!/bin/bash
+#BSUB -J "sp_cellpose_sweep[1-6]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 4
+#BSUB -R "span[hosts=1] rusage[mem=24000]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+set -euo pipefail
+
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/omicverse-gpu
+source "$PROJECT_HOME/scripts/v2_no_legacy_env.sh"
+
+export SP_PROJECT_MANIFEST="$PROJECT_HOME/config/sample_manifest_v2_corrected.csv"
+export SP_PROJECT_BATCH_RESULTS="$PROJECT_HOME/results/batch_v2_corrected"
+export SP_PROJECT_BATCH_WORK="$PROJECT_HOME/work/batch_v2_corrected"
+export SP_PROJECT_CONFIG="$PROJECT_HOME/config/batch_analysis_v2_corrected.yaml"
+export SP_CELLPOSE_USE_GPU=0
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}_${LSB_JOBINDEX:-manual}"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+
+case "${LSB_JOBINDEX:?}" in
+  1) sample=SC000895-R4; flow=0.2; prob=-2; tag=flow02_probm2 ;;
+  2) sample=SC000895-R4; flow=0.4; prob=0;  tag=flow04_prob0  ;;
+  3) sample=SC000895-R4; flow=0.6; prob=1;  tag=flow06_prob1  ;;
+  4) sample=SC000895-R5; flow=0.2; prob=-2; tag=flow02_probm2 ;;
+  5) sample=SC000895-R5; flow=0.4; prob=0;  tag=flow04_prob0  ;;
+  6) sample=SC000895-R5; flow=0.6; prob=1;  tag=flow06_prob1  ;;
+  *) echo "Unsupported LSB_JOBINDEX=${LSB_JOBINDEX}" >&2; exit 2 ;;
+esac
+
+export SP_CELLPOSE_OUTPUT_SUBDIR="cellpose_sweep/${tag}"
+export SP_CELLPOSE_FLOW_THRESHOLD="$flow"
+export SP_CELLPOSE_PROB_THRESH="$prob"
+python -u "$PROJECT_HOME/scripts/22_cellpose_he_each_sample.py" --sample-id "$sample" --force

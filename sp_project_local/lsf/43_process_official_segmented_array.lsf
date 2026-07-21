@@ -1,0 +1,19 @@
+#!/bin/bash
+#BSUB -J "sp_official_cells[1-8]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 4
+#BSUB -R "span[hosts=1] rusage[mem=12000]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+source "$PROJECT_HOME/scripts/official_segmented_v1_env.sh"
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}_${LSB_JOBINDEX:-manual}"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+python -u "$PROJECT_HOME/scripts/50_process_official_segmented_sample.py"

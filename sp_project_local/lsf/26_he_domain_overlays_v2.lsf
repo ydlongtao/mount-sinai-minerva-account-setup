@@ -1,0 +1,19 @@
+#!/bin/bash
+#BSUB -J sp_v2_he_domain_overlay
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 2
+#BSUB -R "span[hosts=1] rusage[mem=8000]"
+#BSUB -W 01:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+source "$PROJECT_HOME/scripts/v2_no_legacy_env.sh"
+export SP_PROJECT_INPUT_BATCH_WORK="$PROJECT_HOME/work/batch"
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}"
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+python "$PROJECT_HOME/scripts/39_make_he_domain_overlays.py"

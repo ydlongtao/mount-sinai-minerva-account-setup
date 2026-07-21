@@ -64,6 +64,10 @@ The current branch includes:
 - A raw-count export step that re-aggregates counts from the original
   `square_002um/filtered_feature_bc_matrix.h5` instead of exporting normalized
   float values.
+- Official Space Ranger segmented-cell validation and an eight-sample review
+  decision record in `docs/official_segmented_review_decisions.md`.
+- A CPU array for the next per-sample cell-level pass:
+  `submit_official_cell_analysis.sh`.
 
 Local result downloads and generated reports are intentionally ignored by git
 under `sp_project_local/local_results/`.
@@ -92,3 +96,24 @@ BAM, molecule info, and cloupe files are not processed in this pilot branch.
 The `square_002um` data are used only for the crop-level Cellpose/bin2cell
 pilot; broader all-sample production should be submitted only after reviewing
 the pilot QC/marker report.
+
+## Official Segmented-Cell Next Stage
+
+The official segmented-cell review confirmed that R4, R2, and R6 have lower
+complexity consistent with tissue and sequencing context. They are retained,
+and no special low-RNA immune-cell threshold is applied. The next stage keeps
+all official cells, normalizes each sample, selects 2,000 HVGs, computes PCA,
+neighbors, Scanpy/igraph Leiden clusters, UMAP, prostate marker scores, and
+spatial cluster previews. Zero-count objects remain in the saved H5AD but are
+excluded from the graph calculation only.
+
+After uploading this bundle to Minerva:
+
+```bash
+cd /sc/arion/work/huangl21/sp_project
+chmod +x submit_official_cell_analysis.sh
+./submit_official_cell_analysis.sh
+```
+
+Review the per-sample cluster and marker outputs before starting cross-sample
+integration, spatial domains, and sample-level differential analysis.

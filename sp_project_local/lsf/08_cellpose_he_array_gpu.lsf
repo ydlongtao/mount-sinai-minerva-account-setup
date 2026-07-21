@@ -1,0 +1,29 @@
+#!/bin/bash
+#BSUB -J sp_cellpose_he[1-10]
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -m "lg05g29 lg03e15 lg05e04"
+#BSUB -n 1
+#BSUB -gpu "num=1"
+#BSUB -R "span[hosts=1] rusage[mem=64000]"
+#BSUB -W 06:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/omicverse-gpu
+module load cuda || true
+export SP_PROJECT_HOME="$PROJECT_HOME"
+export SP_PROJECT_SCRATCH=/sc/arion/scratch/huangl21/sp_project
+export TMPDIR="${SP_PROJECT_SCRATCH}/${LSB_JOBID:-manual}.${LSB_JOBINDEX:-0}"
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs" "$CELLPOSE_LOCAL_MODELS_PATH"
+export PYTHONPATH="${PROJECT_HOME}/scripts:${PYTHONPATH:-}"
+export OMP_NUM_THREADS=1
+
+hostname
+nvidia-smi
+python "$PROJECT_HOME/scripts/22_cellpose_he_each_sample.py" --sample-index "${LSB_JOBINDEX}"
