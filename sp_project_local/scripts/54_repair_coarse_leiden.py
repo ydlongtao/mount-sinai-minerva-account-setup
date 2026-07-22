@@ -55,7 +55,7 @@ def main() -> None:
     adata.obs["cell_level_leiden_coarse_repaired"] = adata.obs["cell_level_leiden_coarse_repaired"].astype("category")
     adata.obsm["X_umap_coarse_repaired"] = np.full((adata.n_obs, 2), np.nan, dtype=np.float32)
     adata.obsm["X_umap_coarse_repaired"][nonzero] = graph.obsm["X_umap"]
-    adata.uns["cell_level_analysis_coarse_repaired"] = {"target_range": [TARGET_MIN, TARGET_MAX], "target_clusters": TARGET, "neighbor_candidates": NEIGHBORS, "resolution_candidates": RESOLUTIONS, "chosen_n_neighbors": chosen["n_neighbors"], "chosen_resolution": chosen["resolution"], "chosen_cluster_count": chosen["clusters"], "candidate_results": candidates, "leiden_backend": "scanpy_igraph", "v1_and_coarse_v2_preserved": True, "zero_counts_retained": True}
+    adata.uns["cell_level_analysis_coarse_repaired"] = {"target_range": [TARGET_MIN, TARGET_MAX], "target_clusters": TARGET, "neighbor_candidates": NEIGHBORS, "resolution_candidates": RESOLUTIONS, "chosen_n_neighbors": chosen["n_neighbors"], "chosen_resolution": chosen["resolution"], "chosen_cluster_count": chosen["clusters"], "candidate_results_json": json.dumps(candidates, sort_keys=True), "leiden_backend": "scanpy_igraph", "v1_and_coarse_v2_preserved": True, "zero_counts_retained": True}
     sc.pl.umap(graph, color="coarse_leiden_repaired", show=False, frameon=False)
     plt.savefig(figures / f"{sample}_repaired_umap_leiden.png", dpi=180, bbox_inches="tight")
     plt.close("all")
