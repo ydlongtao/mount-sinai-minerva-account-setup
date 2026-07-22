@@ -30,11 +30,11 @@ COLORS = {
     "ambiguous_or_low_signal": "#bdbdbd",
 }
 DISPLAY = {
-    "malignant_epithelial_candidate": "候选恶性上皮", "luminal_epithelial": "腔面上皮",
-    "basal_epithelial": "基底上皮", "T_NK": "T/NK", "B_plasma": "B/浆细胞",
-    "myeloid": "髓系", "fibroblast_stromal": "成纤维/间质",
-    "smooth_muscle_pericyte": "平滑肌/周细胞", "endothelial": "内皮",
-    "ambiguous_or_low_signal": "低信号/待核查",
+    "malignant_epithelial_candidate": "candidate malignant epithelium", "luminal_epithelial": "luminal epithelium",
+    "basal_epithelial": "basal epithelium", "T_NK": "T/NK", "B_plasma": "B/plasma",
+    "myeloid": "myeloid", "fibroblast_stromal": "fibroblast/stroma",
+    "smooth_muscle_pericyte": "smooth muscle/pericyte", "endothelial": "endothelial",
+    "ambiguous_or_low_signal": "low signal / review",
 }
 
 
