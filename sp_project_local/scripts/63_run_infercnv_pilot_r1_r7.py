@@ -32,6 +32,7 @@ GTF = HG38 / "gencode.v38.primary_assembly.annotation.gtf.gz"
 INPUT_DIR = ROOT / "analysis_coarse" / "samples"
 OUT_ROOT = ROOT / "infercnv_pilot_r1_r7"
 MAIN_TYPES = {"endothelial", "fibroblast_stromal", "smooth_muscle_pericyte"}
+AUX_TYPES = {"T_NK", "B_plasma", "myeloid"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-query", type=int, default=40000)
     p.add_argument("--seed", type=int, default=20260722)
     p.add_argument("--output-root", default=str(PROJECT / "results" / "segmented_official_v1" / "infercnv_pilot_r1_r7"))
+    p.add_argument("--reference-mode", default="main_reference")
     return p.parse_args()
 
 
@@ -55,10 +57,26 @@ def main() -> None:
 
     selected_path = REF_DIR / "reference_cells_for_infercnvpy.csv.gz"
     selected = pd.read_csv(selected_path)
-    selected = selected[(selected["sample_id"] == sample) &
-                        (selected["reference_group"] == "main_reference") &
-                        (selected["provisional_type"].isin(MAIN_TYPES)) &
-                        selected["selected_for_pilot"].astype(bool)]
+    if args.reference_mode == "auxiliary_reference":
+        selected = selected[(selected["sample_id"] == sample) &
+                            (selected["reference_group"] == "auxiliary_reference") &
+                            (selected["provisional_type"].isin(AUX_TYPES)) &
+                            selected["selected_for_pilot"].astype(bool)]
+        reference_types = AUX_TYPES
+    elif args.reference_mode in MAIN_TYPES:
+        selected = selected[(selected["sample_id"] == sample) &
+                            (selected["reference_group"] == "main_reference") &
+                            (selected["provisional_type"] == args.reference_mode) &
+                            selected["selected_for_pilot"].astype(bool)]
+        reference_types = {args.reference_mode}
+    elif args.reference_mode == "main_reference":
+        selected = selected[(selected["sample_id"] == sample) &
+                            (selected["reference_group"] == "main_reference") &
+                            (selected["provisional_type"].isin(MAIN_TYPES)) &
+                            selected["selected_for_pilot"].astype(bool)]
+        reference_types = MAIN_TYPES
+    else:
+        raise ValueError(f"Unsupported reference mode: {args.reference_mode}")
     selected_ids = set(selected["cell_id"].astype(str))
     if not selected_ids:
         raise RuntimeError(f"{sample}: no selected main-reference cells")
@@ -81,10 +99,10 @@ def main() -> None:
     keep = np.sort(np.concatenate([np.flatnonzero(present_refs), query_idx]))
     adata = adata[keep].copy()
     adata.obs["cnv_reference_label"] = np.where(
-        adata.obs_names.isin(selected_ids), "main_reference", "query"
+        adata.obs_names.isin(selected_ids), "reference", "query"
     ).astype(str)
     adata.obs["cnv_reference_label"] = pd.Categorical(
-        adata.obs["cnv_reference_label"], categories=["main_reference", "query"]
+        adata.obs["cnv_reference_label"], categories=["reference", "query"]
     )
 
     # Use the preserved raw counts layer as input; infercnvpy operates on X.
@@ -104,7 +122,7 @@ def main() -> None:
     cnv.tl.infercnv(
         adata,
         reference_key="cnv_reference_label",
-        reference_cat="main_reference",
+        reference_cat="reference",
         window_size=100,
         step=10,
         dynamic_threshold=1.5,
@@ -132,7 +150,8 @@ def main() -> None:
     result_h5ad = out / f"{sample}_infercnv_pilot.h5ad"
     adata.uns["infercnv_pilot_metadata"] = {
         "sample": sample,
-        "reference_types": sorted(MAIN_TYPES),
+        "reference_types": sorted(reference_types),
+        "reference_mode": args.reference_mode,
         "reference_selection": "balanced marker-based non-ambiguous endothelial/stromal/smooth-muscle cells",
         "input_counts_layer": "counts",
         "normalization": "normalize_total_target_sum_1e4_then_log1p",
@@ -147,13 +166,14 @@ def main() -> None:
         "status": "pass",
         "sample": sample,
         "cells_total": int(adata.n_obs),
-        "reference_cells": int((adata.obs["cnv_reference_label"] == "main_reference").sum()),
+        "reference_cells": int((adata.obs["cnv_reference_label"] == "reference").sum()),
         "query_cells": int((adata.obs["cnv_reference_label"] == "query").sum()),
         "genes_with_positions": int(adata.n_vars),
         "cnv_matrix_shape": list(cnv_matrix.shape) if cnv_matrix is not None else None,
         "output_h5ad": str(result_h5ad),
         "heatmap": str(out / f"{sample}_cnv_reference_heatmap.png"),
-        "reference_types": sorted(MAIN_TYPES),
+        "reference_types": sorted(reference_types),
+        "reference_mode": args.reference_mode,
     }
     (out / "pilot_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))

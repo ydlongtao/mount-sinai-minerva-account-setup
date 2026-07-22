@@ -1,0 +1,38 @@
+#BSUB -J "sp_infercnv_sens[1-10]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 8
+#BSUB -R "span[hosts=1] rusage[mem=64000]"
+#BSUB -W 12:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/infercnvpy
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-8}
+export MKL_NUM_THREADS=${LSB_DJOB_NUMPROC:-8}
+export SP_PROJECT_HOME="$PROJECT_HOME"
+export SP_HG38_REF=/sc/arion/work/huangl21/references/hg38/gencode38
+
+case "${LSB_JOBINDEX:-1}" in
+  1) SAMPLE=SC000895-R1; MODE=endothelial ;;
+  2) SAMPLE=SC000895-R7; MODE=endothelial ;;
+  3) SAMPLE=SC000895-R1; MODE=fibroblast_stromal ;;
+  4) SAMPLE=SC000895-R7; MODE=fibroblast_stromal ;;
+  5) SAMPLE=SC000895-R1; MODE=smooth_muscle_pericyte ;;
+  6) SAMPLE=SC000895-R7; MODE=smooth_muscle_pericyte ;;
+  7) SAMPLE=SC000895-R1; MODE=auxiliary_reference ;;
+  8) SAMPLE=SC000895-R7; MODE=auxiliary_reference ;;
+  9) SAMPLE=SC000895-R1; MODE=main_reference ;;
+  10) SAMPLE=SC000895-R7; MODE=main_reference ;;
+  *) echo "Unsupported LSB_JOBINDEX=${LSB_JOBINDEX:-}" >&2; exit 2 ;;
+esac
+
+OUT="$PROJECT_HOME/results/segmented_official_v1/infercnv_sensitivity_r1_r7/$MODE"
+python -u "$PROJECT_HOME/scripts/63_run_infercnv_pilot_r1_r7.py" \
+  --sample "$SAMPLE" --max-query 0 --reference-mode "$MODE" --output-root "$OUT"
