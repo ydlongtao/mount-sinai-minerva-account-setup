@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import html
 import json
+import argparse
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parents[1] / "local_results" / "segmented_official_v1" / "infercnv_pilot_r1_r7"
-OUT = BASE / "infercnv_pilot_r1_r7_report.html"
 SAMPLES = ["SC000895-R1", "SC000895-R7"]
 
 
-def read_summary(sample: str) -> dict:
-    return json.loads((BASE / sample / "pilot_summary.json").read_text())
+def read_summary(base: Path, sample: str) -> dict:
+    return json.loads((base / sample / "pilot_summary.json").read_text())
 
 
 def row(label: str, value: object) -> str:
@@ -20,9 +19,15 @@ def row(label: str, value: object) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input-dir", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    base = args.input_dir.resolve()
+    out = args.output.resolve()
     cards = []
     for sample in SAMPLES:
-        s = read_summary(sample)
+        s = read_summary(base, sample)
         image = f"{sample}/{sample}_cnv_reference_heatmap.png"
         cards.append(f"""
 <section class="sample">
@@ -69,8 +74,8 @@ table {{ width:100%; border-collapse:collapse; font-size:14px; }} th,td {{ text-
 <li>最终 CNV 阳性候选需同时满足：连续染色体区段、多个参考组合方向一致、空间上富集于恶性上皮候选区域。</li></ul>
 </div><p class="subtitle">报告生成自本地下载的 LSF pilot 输出；原始大 H5AD 未复制到本地。</p>
 </main></body></html>"""
-    OUT.write_text(page, encoding="utf-8")
-    print(OUT)
+    out.write_text(page, encoding="utf-8")
+    print(out)
 
 
 if __name__ == "__main__":
