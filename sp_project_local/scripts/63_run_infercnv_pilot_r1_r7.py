@@ -39,6 +39,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--sample", required=True, choices=["SC000895-R1", "SC000895-R7"])
     p.add_argument("--max-query", type=int, default=40000)
     p.add_argument("--seed", type=int, default=20260722)
+    p.add_argument("--output-root", default=str(PROJECT / "results" / "segmented_official_v1" / "infercnv_pilot_r1_r7"))
     return p.parse_args()
 
 
@@ -49,7 +50,7 @@ def input_path(sample: str) -> Path:
 def main() -> None:
     args = parse_args()
     sample = args.sample
-    out = OUT_ROOT / sample
+    out = Path(args.output_root) / sample
     out.mkdir(parents=True, exist_ok=True)
 
     selected_path = REF_DIR / "reference_cells_for_infercnvpy.csv.gz"
