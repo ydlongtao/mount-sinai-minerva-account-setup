@@ -27,6 +27,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--sample", required=True, choices=["SC000895-R1", "SC000895-R7"])
     p.add_argument("--output-root", default=str(ROOT / "omicverse_pyinfercnv_i3_r1_r7"))
+    p.add_argument("--candidate-definition", choices=["malignant_only", "epithelial_v2"], default="malignant_only")
     args = p.parse_args()
     sample = args.sample
     out = Path(args.output_root) / sample
@@ -50,10 +51,26 @@ def main() -> None:
     marker = pd.read_csv(marker_path, dtype={"cluster": str}).set_index("cluster")
     clusters = adata.obs["cell_level_leiden_coarse"].astype(str)
     malignant_clusters = set(marker.index[marker["predicted_type"].eq("malignant_epithelial_candidate")])
+    epithelial_types = {"malignant_epithelial_candidate", "luminal_epithelial", "basal_epithelial"}
+    epithelial_clusters = set(marker.index[marker["predicted_type"].isin(epithelial_types)])
+    epithelial_like_ambiguous = set(marker.index[
+        marker["predicted_type"].eq("ambiguous_or_low_signal") &
+        (marker["epithelial_context_score"] >= 0.4) &
+        (marker[["score_malignant_epithelial_candidate", "score_luminal_epithelial", "score_basal_epithelial"]].max(axis=1) >= 0.4)
+    ])
     is_reference = adata.obs_names.isin(reference_ids)
     is_malignant = clusters.isin(malignant_clusters).to_numpy()
-    adata.obs["cnv_group"] = np.where(is_reference, "main_reference", np.where(is_malignant, "malignant_epithelial_candidate", "other"))
-    adata.obs["cnv_group"] = pd.Categorical(adata.obs["cnv_group"], categories=["main_reference", "malignant_epithelial_candidate", "other"])
+    if args.candidate_definition == "epithelial_v2":
+        candidate_clusters = epithelial_clusters | epithelial_like_ambiguous
+        is_candidate = clusters.isin(candidate_clusters).to_numpy()
+        candidate_group = "epithelial_candidate"
+        categories = ["main_reference", "epithelial_candidate", "other"]
+    else:
+        is_candidate = is_malignant
+        candidate_group = "malignant_epithelial_candidate"
+        categories = ["main_reference", "malignant_epithelial_candidate", "other"]
+    adata.obs["cnv_group"] = np.where(is_reference, "main_reference", np.where(is_candidate, candidate_group, "other"))
+    adata.obs["cnv_group"] = pd.Categorical(adata.obs["cnv_group"], categories=categories)
 
     # Use py-inferCNV's bundled GRCh38 coordinates. The counts layer remains raw.
     positions = load_gene_positions("hg38").drop_duplicates("gene_symbol").set_index("gene_symbol")
@@ -89,7 +106,8 @@ def main() -> None:
     adata.uns["omicverse_pyinfercnv_i3"].update({
         "sample": sample, "backend": "omicverse.ov.single.CNV -> pyinfercnv",
         "pyinfercnv_hmm": "i3", "reference_group": "main_reference",
-        "tumor_candidate_group": "malignant_epithelial_candidate",
+        "tumor_candidate_group": candidate_group,
+        "candidate_definition": args.candidate_definition,
         "reference_types": sorted(MAIN_TYPES), "gene_position_source": "pyinfercnv bundled hg38",
         "counts_layer": "counts", "exclude_chromosomes": ["chrX", "chrY", "chrM"],
     })
@@ -103,8 +121,8 @@ def main() -> None:
         (out / "heatmap_error.txt").write_text(repr(exc) + "\n")
 
     try:
-        ov.pl.cnv_summary(adata, groupby="cnv_group", subset="malignant_epithelial_candidate", figsize=(12, 3), title=f"{sample} malignant epithelial candidate CNV")
-        plt.savefig(figures / f"{sample}_malignant_candidate_cnv_summary.png", dpi=180, bbox_inches="tight")
+        ov.pl.cnv_summary(adata, groupby="cnv_group", subset=candidate_group, figsize=(12, 3), title=f"{sample} epithelial candidate CNV")
+        plt.savefig(figures / f"{sample}_epithelial_candidate_cnv_summary.png", dpi=180, bbox_inches="tight")
         plt.close("all")
     except Exception as exc:
         (out / "summary_plot_error.txt").write_text(repr(exc) + "\n")
@@ -117,11 +135,14 @@ def main() -> None:
         "pyinfercnv_version": "0.2.0", "hmm_type": "i3",
         "cells_total": int(adata.n_obs), "reference_cells": int(is_reference.sum()),
         "malignant_epithelial_candidate_cells": int(is_malignant.sum()),
-        "other_cells": int((~is_reference & ~is_malignant).sum()),
+        "epithelial_candidate_cells": int(is_candidate.sum()),
+        "epithelial_like_ambiguous_cells": int(clusters.isin(epithelial_like_ambiguous).sum()),
+        "other_cells": int((~is_reference & ~is_candidate).sum()),
         "genes_with_positions": int(adata.n_vars),
         "cnv_matrix_shape": list(adata.obsm["X_cnv"].shape),
         "hmm_state_matrix_shape": list(hmm.shape) if hmm is not None else None,
         "cnv_regions_present": bool(adata.uns.get("cnv", {}).get("cnv_regions") is not None),
+        "candidate_definition": args.candidate_definition,
         "output_h5ad": str(output),
     }
     (out / "i3_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
