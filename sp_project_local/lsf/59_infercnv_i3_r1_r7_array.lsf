@@ -1,0 +1,32 @@
+#BSUB -J "sp_infercnv_i3[1-2]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 8
+#BSUB -R "span[hosts=1] rusage[mem=64000]"
+#BSUB -W 12:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/infercnvpy
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export SP_PROJECT_HOME="$PROJECT_HOME"
+export SP_HG38_REF=/sc/arion/work/huangl21/references/hg38/gencode38
+export R_LIBS_USER=/sc/arion/work/huangl21/Rlibs/4.3.3
+module load R/4.3.3 mpfr/4.2.2
+
+case "${LSB_JOBINDEX:-1}" in
+  1) SAMPLE=SC000895-R1 ;;
+  2) SAMPLE=SC000895-R7 ;;
+  *) echo "Unsupported LSB_JOBINDEX=${LSB_JOBINDEX:-}" >&2; exit 2 ;;
+esac
+
+INPUT="$PROJECT_HOME/results/segmented_official_v1/infercnv_i3_inputs_r1_r7/$SAMPLE"
+OUT="$PROJECT_HOME/results/segmented_official_v1/infercnv_i3_r1_r7/$SAMPLE"
+mkdir -p "$INPUT" "$OUT"
+python -u "$PROJECT_HOME/scripts/64_export_infercnv_r_inputs_r1_r7.py" --sample "$SAMPLE"
+Rscript "$PROJECT_HOME/scripts/65_run_infercnv_i3.R" "$INPUT" "$OUT"
