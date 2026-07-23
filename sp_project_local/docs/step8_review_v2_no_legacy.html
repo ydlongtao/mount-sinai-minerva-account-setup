@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Step 8 前审阅报告：Visium HD 前列腺癌 v2</title>
+<style>
+body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; margin: 0; color: #1f2933; background: #f5f7fa; line-height: 1.55; }
+main { max-width: 1180px; margin: auto; padding: 32px 24px 60px; }
+h1 { margin-bottom: 4px; } h2 { margin-top: 34px; border-bottom: 2px solid #d9e2ec; padding-bottom: 6px; }
+.subtitle,.muted { color: #52606d; }
+.status { display: inline-block; padding: 3px 10px; border-radius: 12px; background: #d9f2e6; color: #176b45; font-weight: 600; }
+.warning { background: #fff4cc; border-left: 5px solid #d99e00; padding: 12px 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(270px,1fr)); gap: 16px; }
+.sample-card { background: white; border: 1px solid #d9e2ec; border-radius: 6px; padding: 14px; }
+.sample-card img { width: 100%; height: 230px; object-fit: contain; background: #f8fafc; }
+table { width: 100%; border-collapse: collapse; background: white; } th,td { border: 1px solid #d9e2ec; padding: 8px; text-align: left; } th { background: #eaf0f6; }
+li { margin: 6px 0; } label { display: block; margin: 8px 0; }
+.metric { background: white; border: 1px solid #d9e2ec; padding: 14px; border-radius: 6px; }
+code { background: #eef2f7; padding: 2px 4px; border-radius: 3px; }
+</style>
+</head>
+<body><main>
+<h1>Step 8 前审阅报告</h1>
+<p class="subtitle">Visium HD 前列腺癌正式分析 v2；排除 TD006859-B408 与 TD006859-B573</p>
+<p><span class="status">Step 7 已完成</span> 本报告用于确认是否进入空间邻域、共定位和空间通讯分析，不替代正式统计报告。</p>
+
+<div class="warning"><b>解释边界：</b>当前空间域模型是基于表达 PCA 与空间坐标的第一版 Leiden 模型；marker 结果是初步评分，不是人工确认的细胞类型标签。空间通讯结果必须以样本为重复单位进行汇总。</div>
+
+<h2>1. 队列与完成状态</h2>
+<div class="grid">
+<div class="metric"><b>纳入样本</b><br>8 个 SC000895 Visium HD 样本</div>
+<div class="metric"><b>排除样本</b><br>TD006859-B408, TD006859-B573</div>
+<div class="metric"><b>016um 整合</b><br>[1335317, 17404]；状态 pass</div>
+<div class="metric"><b>细胞级整合</b><br>[3942, 17398]；状态 pass</div>
+</div>
+<p>纳入样本：SC000895-R1, SC000895-R2, SC000895-R4, SC000895-R5, SC000895-R6, SC000895-R7, SC000895-R8, SC000895-R9</p>
+
+<h2>2. Step 7 样本级空间域结果</h2>
+<table><thead><tr><th>样本</th><th>状态</th><th>对象数</th><th>基因数</th><th>空间域数</th><th>空间权重</th></tr></thead><tbody><tr><td>SC000895-R1</td><td>pass</td><td>466</td><td>18038</td><td>4</td><td>3.0</td></tr><tr><td>SC000895-R2</td><td>pass</td><td>371</td><td>17536</td><td>3</td><td>3.0</td></tr><tr><td>SC000895-R4</td><td>pass</td><td>879</td><td>17873</td><td>7</td><td>3.0</td></tr><tr><td>SC000895-R5</td><td>pass</td><td>320</td><td>18045</td><td>2</td><td>3.0</td></tr><tr><td>SC000895-R6</td><td>pass</td><td>384</td><td>17955</td><td>3</td><td>3.0</td></tr><tr><td>SC000895-R7</td><td>pass</td><td>430</td><td>17929</td><td>3</td><td>3.0</td></tr><tr><td>SC000895-R8</td><td>pass</td><td>943</td><td>18042</td><td>4</td><td>3.0</td></tr><tr><td>SC000895-R9</td><td>pass</td><td>149</td><td>18030</td><td>2</td><td>3.0</td></tr></tbody></table>
+<div class="grid" style="margin-top:16px">
+        <article class="sample-card">
+          <h3>SC000895-R1</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R1_spatial_domain_he_overlay.png" alt="SC000895-R1 H&E spatial domain overlay">
+          <p><b>对象数：</b>466；<b>基因数：</b>18038；<b>空间域数：</b>4</p>
+          <p><b>域组成：</b>0: 168, 1: 94, 2: 93, 3: 111</p>
+          <p class="muted">输入：SC000895-R1_cell_level_qc_marker.h5ad</p>
+        </article>
+        
+        <article class="sample-card">
+          <h3>SC000895-R2</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R2_spatial_domain_he_overlay.png" alt="SC000895-R2 H&E spatial domain overlay">
+          <p><b>对象数：</b>371；<b>基因数：</b>17536；<b>空间域数：</b>3</p>
+          <p><b>域组成：</b>0: 56, 1: 251, 2: 64</p>
+          <p class="muted">输入：SC000895-R2_cell_level_qc_marker.h5ad</p>
+        </article>
+        
+        <article class="sample-card">
+          <h3>SC000895-R4</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R4_spatial_domain_he_overlay.png" alt="SC000895-R4 H&E spatial domain overlay">
+          <p><b>对象数：</b>879；<b>基因数：</b>17873；<b>空间域数：</b>7</p>
+          <p><b>域组成：</b>0: 123, 1: 154, 2: 230, 3: 222, 4: 28, 5: 69, 6: 53</p>
+          <p class="muted">输入：SC000895-R4_cell_level_qc_marker.h5ad</p>
+        </article>
+        
+        <article class="sample-card">
+          <h3>SC000895-R5</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R5_spatial_domain_he_overlay.png" alt="SC000895-R5 H&E spatial domain overlay">
+          <p><b>对象数：</b>320；<b>基因数：</b>18045；<b>空间域数：</b>2</p>
+          <p><b>域组成：</b>0: 182, 1: 138</p>
+          <p class="muted">输入：SC000895-R5_cell_level_qc_marker.h5ad</p>
+        </article>
+        
+        <article class="sample-card">
+          <h3>SC000895-R6</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R6_spatial_domain_he_overlay.png" alt="SC000895-R6 H&E spatial domain overlay">
+          <p><b>对象数：</b>384；<b>基因数：</b>17955；<b>空间域数：</b>3</p>
+          <p><b>域组成：</b>0: 156, 1: 109, 2: 119</p>
+          <p class="muted">输入：SC000895-R6_cell_level_qc_marker.h5ad</p>
+        </article>
+        
+        <article class="sample-card">
+          <h3>SC000895-R7</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R7_spatial_domain_he_overlay.png" alt="SC000895-R7 H&E spatial domain overlay">
+          <p><b>对象数：</b>430；<b>基因数：</b>17929；<b>空间域数：</b>3</p>
+          <p><b>域组成：</b>0: 234, 1: 93, 2: 103</p>
+          <p class="muted">输入：SC000895-R7_cell_level_qc_marker.h5ad</p>
+        </article>
+        
+        <article class="sample-card">
+          <h3>SC000895-R8</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R8_spatial_domain_he_overlay.png" alt="SC000895-R8 H&E spatial domain overlay">
+          <p><b>对象数：</b>943；<b>基因数：</b>18042；<b>空间域数：</b>4</p>
+          <p><b>域组成：</b>0: 81, 1: 306, 2: 289, 3: 267</p>
+          <p class="muted">输入：SC000895-R8_cell_level_qc_marker.h5ad</p>
+        </article>
+        
+        <article class="sample-card">
+          <h3>SC000895-R9</h3>
+          <img src="../local_results/batch_v2_no_legacy/figures/overlay/SC000895-R9_spatial_domain_he_overlay.png" alt="SC000895-R9 H&E spatial domain overlay">
+          <p><b>对象数：</b>149；<b>基因数：</b>18030；<b>空间域数：</b>2</p>
+          <p><b>域组成：</b>0: 85, 1: 64</p>
+          <p class="muted">输入：SC000895-R9_cell_level_qc_marker.h5ad</p>
+        </article>
+        </div>
+
+<h2>3. 进入 Step 8 前的确认清单</h2>
+<label><input type="checkbox"> 8 个样本的空间域图均能与组织覆盖和表达分布对应，没有明显空域、孤立域或坐标错位。</label>
+<label><input type="checkbox"> 细胞类型标签将采用 marker + QC + 空间位置综合确认，不直接把 Leiden domain 当作细胞类型。</label>
+<label><input type="checkbox"> 通讯分析的基本统计单位确定为“样本内的细胞类型/空间域对”，而不是单个 cell/bin。</label>
+<label><input type="checkbox"> 低细胞数或低 counts 样本只做敏感性分析，不作为独立强证据。</label>
+<label><input type="checkbox"> 已确认配体-受体数据库版本和物种为 human，并记录数据库版本。</label>
+<label><input type="checkbox"> 已确认空间邻域距离/邻居数阈值，并计划做至少一组敏感性分析。</label>
+
+<h2>4. 建议的 Step 8 执行顺序</h2>
+<ol>
+<li>先在每个样本内建立细胞级空间邻接图，计算细胞类型/空间域的邻域富集。</li>
+<li>再计算肿瘤-CAF、肿瘤-免疫、肿瘤-血管等候选关系的样本级统计。</li>
+<li>使用 human 配体-受体数据库开展通讯候选筛选，并报告每个样本的效应方向和一致性。</li>
+<li>最后进行跨样本汇总和敏感性分析；不把所有细胞拼接后直接当作独立重复。</li>
+</ol>
+
+<h2>5. 当前尚未执行的内容</h2>
+<ul><li>空间邻域富集与共定位</li><li>配体-受体空间通讯</li><li>样本级统计检验与敏感性分析</li><li>Spatial transition tensor</li></ul>
+<p class="muted">原始结果位置：<code>/sc/arion/work/huangl21/sp_project/results/batch_v2_no_legacy/</code><br>本地摘要目录：<code>local_results/batch_v2_no_legacy/</code></p>
+</main></body></html>

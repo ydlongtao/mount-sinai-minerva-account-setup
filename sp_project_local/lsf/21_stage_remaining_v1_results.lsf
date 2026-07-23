@@ -1,0 +1,25 @@
+#!/bin/bash
+#BSUB -J sp_stage_v2_no_legacy
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 1
+#BSUB -R "rusage[mem=4000]"
+#BSUB -W 00:15
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+export SP_PROJECT_MANIFEST="$PROJECT_HOME/config/sample_manifest_v2_no_legacy.csv"
+export SP_PROJECT_BATCH_RESULTS="$PROJECT_HOME/results/batch_v2_no_legacy"
+export SP_PROJECT_BATCH_WORK="$PROJECT_HOME/work/batch_v2_no_legacy"
+export SP_PROJECT_CONFIG="$PROJECT_HOME/config/batch_analysis_v2_no_legacy.yaml"
+export SP_PROJECT_INPUT_BATCH_RESULTS="$PROJECT_HOME/results/batch"
+
+python "$PROJECT_HOME/scripts/36_stage_remaining_v1_results.py"

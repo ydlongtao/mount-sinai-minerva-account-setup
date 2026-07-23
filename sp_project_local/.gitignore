@@ -1,0 +1,16 @@
+results/
+logs/
+work/
+local_results/
+*.log
+*.h5ad
+*.h5
+*.bam
+*.bai
+*.cloupe
+*.svs
+*.tif
+*.tiff
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store

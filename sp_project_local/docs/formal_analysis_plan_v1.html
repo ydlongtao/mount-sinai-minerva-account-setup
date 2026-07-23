@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visium HD 前列腺癌正式分析计划 v1</title>
+  <style>
+    :root { --ink:#1f2933; --muted:#52606d; --line:#d9e2ec; --blue:#0b5cad; --green:#087f5b; --amber:#9a6700; --red:#b42318; --bg:#f7f9fc; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--bg); font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { max-width:1120px; margin:0 auto; padding:32px 22px 64px; }
+    h1 { margin:0 0 8px; font-size:30px; line-height:1.25; }
+    h2 { margin:34px 0 12px; font-size:22px; border-bottom:2px solid var(--line); padding-bottom:6px; }
+    h3 { margin:20px 0 6px; font-size:17px; }
+    p { margin:8px 0; }
+    .meta { color:var(--muted); margin-bottom:22px; }
+    .notice { background:#fff; border-left:5px solid var(--blue); padding:14px 17px; box-shadow:0 1px 3px #d9e2ec; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+    .stat { background:#fff; border:1px solid var(--line); padding:14px; }
+    .stat strong { display:block; font-size:24px; color:var(--blue); }
+    table { width:100%; border-collapse:collapse; background:#fff; margin:10px 0 18px; }
+    th,td { border:1px solid var(--line); padding:8px 9px; text-align:left; vertical-align:top; }
+    th { background:#eef3f8; }
+    .step { background:#fff; border:1px solid var(--line); border-left:5px solid var(--blue); margin:14px 0; padding:14px 17px; }
+    .step h3 { margin-top:0; }
+    .status { display:inline-block; padding:2px 8px; border-radius:3px; font-size:12px; font-weight:600; margin-left:6px; }
+    .now { color:var(--blue); background:#e7f0ff; }
+    .next { color:var(--amber); background:#fff4cc; }
+    .later { color:var(--muted); background:#edf1f5; }
+    .hold { color:var(--red); background:#fdecec; }
+    code { background:#eef1f4; padding:1px 4px; border-radius:3px; }
+    .small { color:var(--muted); font-size:13px; }
+    ul { margin-top:6px; }
+    .footer { margin-top:30px; color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Visium HD 前列腺癌正式分析计划 v1</h1>
+  <p class="meta">版本：v1 · 数据：10x Visium HD · 样本：10 个前列腺癌样本 · 分析框架：OmicVerse / Scanpy / Squidpy · 2026-07-20</p>
+
+  <div class="notice">
+    <strong>执行原则：</strong>先完成数据结构、QC、裁剪和细胞分割验证，再进行细胞注释、空间域、空间邻域和空间通讯。正式统计以样本为重复单位，不把每个 bin 或 cell 当作独立生物学重复。
+  </div>
+
+  <h2>当前起点</h2>
+  <div class="grid">
+    <div class="stat"><strong>10/10</strong>16um、Cellpose、cell QC、空间域流程完成</div>
+    <div class="stat"><strong>3,993</strong>当前 Cellpose 细胞总数</div>
+    <div class="stat"><strong>3,942</strong>SC000895 组细胞，占绝大多数</div>
+    <div class="stat"><strong>51</strong>TD006859 组细胞，暂不适合组间统计</div>
+  </div>
+  <p class="small">重要限制：TD006859-B408 只有 8 个细胞，TD006859-B573 只有 43 个细胞；两者的高 marker score 不能直接解释为更高肿瘤负荷。16um 整合产生 424 个 cluster，当前只作为探索结果。</p>
+
+  <h2>步骤与依赖关系</h2>
+
+  <section class="step">
+    <h3>Step 1. 结果校正与 H5AD 结构验证 <span class="status now">第一步</span></h3>
+    <p><strong>目标：</strong>确认所有结果文件可读、空间坐标完整、counts layer 和 gene names 正确，并修正报告统计错误。</p>
+    <p><strong>输入：</strong><code>results/batch/</code> 下的 10 个样本 H5AD、QC JSON/CSV、整合 H5AD。</p>
+    <p><strong>检查：</strong>obs/var 唯一性、<code>obsm["spatial"]</code>、counts layer、零 counts、异常 counts、空间坐标范围、样本和分组标签。</p>
+    <p><strong>输出：</strong><code>results/validation/</code>、结构检查表、异常样本清单、修正后的本地 HTML 报告。</p>
+    <p><strong>资源：</strong>CPU，express，1–2 cores，8–16 GB；不需要 GPU。</p>
+    <p><strong>验收：</strong>10/10 样本结构检查通过；异常项均记录，不静默修复。</p>
+  </section>
+
+  <section class="step">
+    <h3>Step 2. 样本级 QC 与组织覆盖评估 <span class="status next">依赖 Step 1</span></h3>
+    <p><strong>目标：</strong>建立 16um、8um、Cellpose 三套独立 QC，不用一个阈值强行适配所有样本。</p>
+    <ul>
+      <li>16um：total counts、detected genes、组织覆盖、线粒体比例、零 counts 比例。</li>
+      <li>8um：只对有可靠 barcode mapping 的样本进入 mapped 分析。</li>
+      <li>Cell-level：按样本内分布过滤低质量细胞和异常大细胞。</li>
+    </ul>
+    <p><strong>重点样本：</strong>R4、R6、R9、TD006859-B408、TD006859-B573。</p>
+    <p><strong>输出：</strong>样本 QC 表、阈值记录、QC 图、是否进入后续统计的样本清单。</p>
+    <p><strong>资源：</strong>CPU，express；大型 H5 读取可申请 4 cores、24 GB。</p>
+  </section>
+
+  <section class="step">
+    <h3>Step 3. 裁剪坐标与 H&E Cellpose 质量复核 <span class="status next">依赖 Step 2</span></h3>
+    <p><strong>目标：</strong>确认当前固定裁剪区域确实覆盖组织，并验证 Cellpose label、H&E 图像和表达 bin 的空间重叠。</p>
+    <p><strong>重点：</strong>对 R4、R6、R9、B408、B573 生成全组织预览、多裁剪区域叠加图和 Cellpose 边界图。</p>
+    <p><strong>必要时：</strong>把单一的 1,000 × 1,000 um 裁剪改为全组织或多个 ROI；保留原 v1 结果，不覆盖。</p>
+    <p><strong>输出：</strong><code>results/segmentation_review/</code>、H&E overlay、label overlay、细胞覆盖率表。</p>
+    <p><strong>资源：</strong>GPU 优先使用 H100/A100；Cellpose 必须记录 CUDA 是否真正启用。GPU 不可用时使用 CPU 备用队列。</p>
+  </section>
+
+  <section class="step">
+    <h3>Step 4. 正式 Cellpose/bin2cell 细胞矩阵 <span class="status next">依赖 Step 3</span></h3>
+    <p><strong>目标：</strong>获得适合细胞级分析的 raw-count cell-by-gene 矩阵。</p>
+    <p><strong>策略：</strong>先处理通过 ROI/组织覆盖检查的样本；B408、B573 暂列为描述性结果，不进入组间检验。</p>
+    <p><strong>输出：</strong>每样本 cell-level H5AD、细胞边界 GeoJSON、细胞 QC、label 与表达叠加图。</p>
+    <p><strong>资源：</strong>Cellpose/图像推理使用 GPU array；bin2cell 及矩阵汇总使用 CPU array。临时文件放在 <code>/sc/arion/scratch/huangl21/sp_project/</code>。</p>
+  </section>
+
+  <section class="step">
+    <h3>Step 5. 细胞类型与状态注释 <span class="status next">依赖 Step 4</span></h3>
+    <p><strong>目标：</strong>从 marker score 升级到可审计的细胞类型注释。</p>
+    <p><strong>候选类型：</strong>luminal/tumor epithelial、basal epithelial、neuroendocrine-like、CAF、smooth muscle、endothelial、T cell、B/plasma、myeloid/macrophage、cycling、low-quality/ambiguous。</p>
+    <p><strong>判定标准：</strong>多个 marker 一致、QC 正常、空间位置合理、至少在多个样本可复现。</p>
+    <p><strong>输出：</strong>cluster marker 表、注释表、UMAP、空间注释图、每样本细胞组成表。</p>
+    <p><strong>资源：</strong>CPU 为主；GPU 可用于 PCA/neighbors，但不是必要条件。</p>
+  </section>
+
+  <section class="step">
+    <h3>Step 6. 多分辨率整合与稳定性评估 <span class="status later">依赖 Step 5</span></h3>
+    <p><strong>目标：</strong>解决当前 16um 产生 424 个 cluster 的过度分群问题。</p>
+    <p><strong>分辨率：</strong><code>0.02, 0.05, 0.1, 0.2, 0.4</code>；同时评估 cluster size、marker、sample mixing、UMAP 和空间投影。</p>
+    <p><strong>统计原则：</strong>cell-level 和 16um 分析分开建模；整合只用于表达空间和注释，不替代样本级统计。</p>
+    <p><strong>输出：</strong>分辨率比较报告、稳定 cluster 清单、推荐 resolution、批次效应诊断。</p>
+    <p><strong>资源：</strong>CPU premium，8 cores，24–48 GB；GPU 只在验证 RAPIDS/Dask 兼容后启用。</p>
+  </section>
+
+  <section class="step">
+    <h3>Step 7. 空间域与空间变异基因 <span class="status later">依赖 Step 5–6</span></h3>
+    <p><strong>目标：</strong>识别肿瘤上皮、基质、免疫、血管及其边界等空间组织区域。</p>
+    <p><strong>方法：</strong>Squidpy neighborhood graph、Moran’s I、spatially variable genes、domain clustering、marker score spatial overlay。</p>
+    <p><strong>输出：</strong>空间域图、空间变异基因表、肿瘤-基质边界图、每个域的 marker 和组成。</p>
+    <p><strong>资源：</strong>CPU 为主；大规模 16um graph 可使用 GPU RAPIDS，但必须记录 GPU 实际使用情况。</p>
+  </section>
+
+  <section class="step">
+    <h3>Step 8. 空间邻域、共定位与空间通讯 <span class="status hold">最后执行</span></h3>
+    <p><strong>目标：</strong>在细胞类型和空间域可信后，分析肿瘤-CAF、肿瘤-免疫、肿瘤-血管等空间关系。</p>
+    <p><strong>分析：</strong>neighborhood enrichment、co-occurrence、距离约束 ligand-receptor、样本内 permutation、样本级汇总。</p>
+    <p><strong>限制：</strong>不把每个 cell/bin 当作独立重复；B408/B573 只做描述性展示。Spatial transition tensor 暂缓，待细胞注释和样本覆盖充分后再评估。</p>
+    <p><strong>输出：</strong>邻域富集矩阵、共定位曲线、候选通讯网络、通路级汇总和多重检验结果。</p>
+  </section>
+
+  <h2>节点与 LSF 策略</h2>
+  <table>
+    <tr><th>任务</th><th>节点</th><th>建议资源</th><th>说明</th></tr>
+    <tr><td>结构、QC、统计、报告</td><td>CPU express/premium</td><td>1–8 cores，8–48 GB</td><td>稳定、可复现，不依赖 GPU</td></tr>
+    <tr><td>Cellpose H&E</td><td>GPU，优先 H100/A100</td><td>1 GPU，4–8 cores</td><td>检查 PyTorch CUDA，避免驱动与 CUDA 版本不兼容</td></tr>
+    <tr><td>bin2cell 矩阵生成</td><td>CPU array</td><td>4–8 cores，24–48 GB</td><td>重点是内存和 scratch 空间</td></tr>
+    <tr><td>大规模 graph/integration</td><td>CPU 优先，GPU 可选</td><td>8 cores，24–64 GB</td><td>RAPIDS/Dask 不兼容时允许回退 CPU，并写入 run_state</td></tr>
+  </table>
+  <p>所有生产作业必须包含 <code>#BSUB -P acc_DiseaseGeneCell</code>，原始数据只读，临时目录固定为 <code>/sc/arion/scratch/huangl21/sp_project/</code>。</p>
+
+  <h2>最终验收标准</h2>
+  <ul>
+    <li>所有进入正式统计的样本有结构检查、QC 和空间覆盖记录。</li>
+    <li>Cellpose label 与 H&E/表达空间一致，异常样本有明确处理记录。</li>
+    <li>每个细胞类型有 marker、QC、空间分布和样本复现证据。</li>
+    <li>组间统计以样本为重复单位，并报告样本数量和有效细胞数。</li>
+    <li>空间通讯结果经过距离约束、背景/置换校正和多重检验。</li>
+    <li>每个 GPU 任务记录节点、CUDA_VISIBLE_DEVICES、PyTorch CUDA 状态和是否发生 CPU fallback。</li>
+  </ul>
+
+  <p class="footer">本计划基于当前 v1 批量结果制定。v1 原始结果保留不覆盖；后续修改应另存为 v2 或更高版本。</p>
+</main>
+</body>
+</html>

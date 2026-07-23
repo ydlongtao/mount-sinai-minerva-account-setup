@@ -1,0 +1,40 @@
+#!/bin/bash
+#BSUB -J gex_gpu_preflight
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -n 4
+#BSUB -gpu "num=1"
+#BSUB -R "select[h100nvl] span[hosts=1] rusage[mem=12000]"
+#BSUB -W 00:20
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.0.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.0.stderr
+set -euo pipefail
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/omicverse-gpu
+module load cuda || true
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+hostname
+nvidia-smi
+python - <<'PY'
+import importlib.metadata as md
+import os
+print("CUDA_VISIBLE_DEVICES=", os.environ.get("CUDA_VISIBLE_DEVICES"))
+try:
+    import torch
+    print("torch=", torch.__version__)
+    print("torch_cuda_build=", torch.version.cuda)
+    print("torch_cuda_available=", torch.cuda.is_available())
+    print("torch_device_count=", torch.cuda.device_count())
+    if torch.cuda.is_available():
+        print("torch_device=", torch.cuda.get_device_name(0))
+except Exception as exc:
+    print("torch FAIL", repr(exc))
+try:
+    from cellpose import models
+    print("cellpose=", md.version("cellpose"))
+    models.CellposeModel(gpu=True, model_type="cyto")
+    print("cellpose_gpu_model=OK")
+except Exception as exc:
+    print("cellpose GPU FAIL", repr(exc))
+PY

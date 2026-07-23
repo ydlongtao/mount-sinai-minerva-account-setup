@@ -1,0 +1,30 @@
+#BSUB -J "sp_ov_pyinfercnv_i3[1-2]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 8
+#BSUB -R "span[hosts=1] rusage[mem=64000]"
+#BSUB -W 12:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export OPENBLAS_NUM_THREADS=${LSB_DJOB_NUMPROC:-8}
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-8}
+export MKL_NUM_THREADS=${LSB_DJOB_NUMPROC:-8}
+export NUMEXPR_NUM_THREADS=${LSB_DJOB_NUMPROC:-8}
+export SP_PROJECT_HOME="$PROJECT_HOME"
+export SP_HG38_REF=/sc/arion/work/huangl21/references/hg38/gencode38
+
+case "${LSB_JOBINDEX:-1}" in
+  1) SAMPLE=SC000895-R1 ;;
+  2) SAMPLE=SC000895-R7 ;;
+  *) echo "Unsupported LSB_JOBINDEX=${LSB_JOBINDEX:-}" >&2; exit 2 ;;
+esac
+
+python -u "$PROJECT_HOME/scripts/66_run_omicverse_pyinfercnv_i3_r1_r7.py" --sample "$SAMPLE"

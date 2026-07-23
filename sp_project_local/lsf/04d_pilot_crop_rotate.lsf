@@ -1,0 +1,27 @@
+#!/bin/bash
+#BSUB -J sp_pilot_crop_rotate_R4
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 4
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=12000]"
+#BSUB -W 01:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+set -a
+source "$PROJECT_HOME/config/paths.env"
+set +a
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}_crop_rotate
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs" "$PROJECT_HOME/results/pilot_v2/crop_rotate"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+python -u "$PROJECT_HOME/scripts/11_pilot_crop_rotate_visium_hd.py" \
+  --bin-dir "$SP_RAW/wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/SC000895_Kuan_lin_Huang_T643/SC000895-R4/outs/binned_outputs/square_008um" \
+  --source-image "$SP_RAW/wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/SC000895_Kuan_lin_Huang_T643/SC000895-R4/outs/spatial/tissue_hires_image.png" \
+  --output-dir "$PROJECT_HOME/results/pilot_v2/SC000895-R4/crop_rotate" \
+  --x-range 2000 3000 --y-range 2000 3000 --angle 0 --map-after-rotate

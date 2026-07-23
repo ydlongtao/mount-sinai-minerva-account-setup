@@ -1,0 +1,58 @@
+#!/bin/bash
+#BSUB -J sp_pilot_gpu_R4_cagra
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -n 4
+#BSUB -gpu num=1
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=16000]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+GPU_ENV=/sc/arion/work/huangl21/conda_envs/omicverse-gpu
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "$GPU_ENV"
+module load cuda || true
+
+set -a
+source "${PROJECT_HOME}/config/paths.env"
+set +a
+
+export SP_PROJECT_WORK_GPU=/sc/arion/work/huangl21/sp_project/work_gpu
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}_gpu_pilot
+mkdir -p "$TMPDIR" "${PROJECT_HOME}/logs" "${PROJECT_HOME}/results/pilot_gpu" "$SP_PROJECT_WORK_GPU"
+
+export PYTHONPATH="${PROJECT_HOME}/scripts:${PYTHONPATH:-}"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+export PYTHONUNBUFFERED=1
+
+hostname
+nvidia-smi
+python - <<'PY'
+import os
+print("CUDA_VISIBLE_DEVICES =", os.environ.get("CUDA_VISIBLE_DEVICES"))
+try:
+    import cupy
+    print("cupy devices =", cupy.cuda.runtime.getDeviceCount())
+except Exception as exc:
+    print("cupy check failed:", repr(exc))
+PY
+
+GPU_MONITOR_LOG="${PROJECT_HOME}/logs/${LSB_JOBID}.gpu_dmon.log"
+nvidia-smi dmon -s pucm -d 30 > "$GPU_MONITOR_LOG" 2>&1 &
+GPU_MONITOR_PID=$!
+cleanup() {
+    kill "$GPU_MONITOR_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+python -u "${PROJECT_HOME}/scripts/04_pilot_read_one_sample_gpu.py" \
+  --sample-id "${SP_PILOT_SAMPLE:-SC000895-R4}" \
+  --resume-pca-checkpoint \
+  --neighbor-algorithm cagra

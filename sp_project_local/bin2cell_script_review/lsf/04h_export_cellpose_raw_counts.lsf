@@ -1,0 +1,29 @@
+#!/bin/bash
+#BSUB -J sp_cellpose_raw_counts_R4
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 1
+#BSUB -R "rusage[mem=64000]"
+#BSUB -W 02:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+GPU_ENV=/sc/arion/work/huangl21/conda_envs/omicverse-gpu
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-1}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "$GPU_ENV"
+set -a
+source "$PROJECT_HOME/config/paths.env"
+set +a
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}_raw_counts
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+
+python -u "$PROJECT_HOME/scripts/15_export_cellpose_raw_counts.py" \
+  --labels-h5ad "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_gex/SC000895-R4_002um_cellpose_labels.h5ad" \
+  --cell-h5ad "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_gex/SC000895-R4_cell_level_cellpose.h5ad" \
+  --raw-2um-h5 "/sc/arion/projects/DiseaseGeneCell/Huang_lab_data/SpatialTranscriptome/wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/SC000895_Kuan_lin_Huang_T643/SC000895-R4/outs/binned_outputs/square_002um/filtered_feature_bc_matrix.h5" \
+  --output-dir "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_gex"

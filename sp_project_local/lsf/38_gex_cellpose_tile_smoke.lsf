@@ -1,0 +1,63 @@
+#!/bin/bash
+#BSUB -J gex_cellpose_tile_smoke
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -n 4
+#BSUB -gpu "num=1"
+#BSUB -R "select[h100nvl] span[hosts=1] rusage[mem=12000]"
+#BSUB -W 00:20
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.0.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.0.stderr
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/omicverse-gpu
+module load cuda || true
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+export CUDA_LAUNCH_BLOCKING=1
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR"
+python - <<'PY'
+from pathlib import Path
+import scipy.sparse
+import tifffile
+from omicverse.external.bin2cell import cellseg
+
+src = Path('/sc/arion/work/huangl21/sp_project/results/batch_v2_corrected/samples/SC000895-R4/gex_compare/flow04_prob0/gex_counts.tiff')
+out = Path('/sc/arion/scratch/huangl21/sp_project/gex_tile_smoke_labels.npz')
+with tifffile.TiffFile(src) as tif:
+    image = tif.asarray()
+print('source_shape=', image.shape, 'dtype=', image.dtype)
+h, w = image.shape[:2]
+best = None
+for y in range(0, max(h - 1024, 1), 1024):
+    for x in range(0, max(w - 1024, 1), 1024):
+        candidate = image[y:y+1024, x:x+1024]
+        score = int((candidate > 0).sum())
+        if best is None or score > best[0]:
+            best = (score, y, x, candidate)
+if best is None or best[0] == 0:
+    raise RuntimeError('GEX image has no nonzero 1024px tile')
+_, y0, x0, tile = best
+print('selected_tile_origin=', (y0, x0), 'nonzero_pixels=', best[0],
+      'min=', int(tile.min()), 'max=', int(tile.max()))
+tile_path = Path('/sc/arion/scratch/huangl21/sp_project/gex_tile_smoke.tiff')
+tifffile.imwrite(tile_path, tile)
+print('tile_shape=', tile.shape)
+passed = False
+for threshold in (0.01, 0.0, -2.0):
+    trial = out.with_name(f'gex_tile_smoke_labels_{str(threshold).replace("-", "m").replace(".", "p")}.npz')
+    cellseg(str(tile_path), str(trial), stardist_model='2D_versatile_fluo',
+            backend='cellpose', block_size=1024, min_overlap=0, context=0,
+            gpu=True, show_progress=True, flow_threshold=0.4,
+            prob_thresh=threshold)
+    labels = scipy.sparse.load_npz(trial)
+    print('prob_thresh=', threshold, 'max_label=', int(labels.max()),
+          'nonzero_pixels=', int(labels.nnz))
+    if labels.max() > 0:
+        passed = True
+if not passed:
+    raise RuntimeError('GPU Cellpose completed but produced no labels at tested thresholds')
+print('GPU single-tile Cellpose smoke: PASS')
+PY

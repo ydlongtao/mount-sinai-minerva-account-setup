@@ -1,0 +1,36 @@
+#!/bin/bash
+#BSUB -J "sp_gex_param_R4[1-3]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -n 4
+#BSUB -gpu "num=1"
+#BSUB -R "select[h100nvl] span[hosts=1] rusage[mem=24000]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/omicverse-gpu
+source "$PROJECT_HOME/scripts/v2_no_legacy_env.sh"
+export SP_PROJECT_MANIFEST="$PROJECT_HOME/config/sample_manifest_v2_corrected.csv"
+export SP_PROJECT_BATCH_RESULTS="$PROJECT_HOME/results/batch_v2_corrected"
+export SP_PROJECT_BATCH_WORK="$PROJECT_HOME/work/batch_v2_corrected"
+export SP_PROJECT_CONFIG="$PROJECT_HOME/config/batch_analysis_v2_corrected.yaml"
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+export SP_GEX_USE_GPU=1
+export SP_GEX_SAMPLE=SC000895-R4
+export SP_GEX_TAG=flow04_prob0
+export TMPDIR="$SP_PROJECT_SCRATCH/${LSB_JOBID:-manual}_${LSB_JOBINDEX:-manual}"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+
+case "$LSB_JOBINDEX" in
+1) export SP_GEX_VARIANT=mpp03_sig2_wide; export SP_GEX_MPP=0.3; export SP_GEX_SIGMA=2; export SP_GEX_NORM_LO=0.1; export SP_GEX_NORM_HI=99.9; export SP_GEX_MASK_THRESHOLD=-1; export SP_GEX_FLOW_THRESHOLD=0; export SP_GEX_DIAMETER=50;;
+2) export SP_GEX_VARIANT=mpp05_sig2_wide; export SP_GEX_MPP=0.5; export SP_GEX_SIGMA=2; export SP_GEX_NORM_LO=0.1; export SP_GEX_NORM_HI=99.9; export SP_GEX_MASK_THRESHOLD=-1; export SP_GEX_FLOW_THRESHOLD=0; export SP_GEX_DIAMETER=30;;
+3) export SP_GEX_VARIANT=mpp06_sig1_sensitive; export SP_GEX_MPP=0.6; export SP_GEX_SIGMA=1; export SP_GEX_NORM_LO=0.1; export SP_GEX_NORM_HI=99.9; export SP_GEX_MASK_THRESHOLD=-2; export SP_GEX_FLOW_THRESHOLD=-0.2; export SP_GEX_DIAMETER=25;;
+*) exit 2;;
+esac
+python -u "$PROJECT_HOME/scripts/47_gex_segmentation_compare.py"

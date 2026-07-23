@@ -1,0 +1,15 @@
+{
+  "sample_id": "SC000895-R4",
+  "crop_x_range_um": [2000, 3000],
+  "crop_y_range_um": [2000, 3000],
+  "rotation_angle": 0,
+  "mpp": 0.3239732935,
+  "buffer": 150,
+  "he_prob_thresh": 0.0,
+  "he_flow_threshold": 0.4,
+  "gex_prob_thresh": 0.01,
+  "gex_nms_thresh": 0.1,
+  "gex_sigma": 5.0,
+  "expand_max_bin_distance": 4,
+  "random_state": 0
+}

@@ -1,0 +1,24 @@
+#!/bin/bash
+#BSUB -J sp_setup
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 1
+#BSUB -R "rusage[mem=4000]"
+#BSUB -W 00:20
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+set -a
+source "${PROJECT_HOME}/config/paths.env"
+set +a
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR" "${PROJECT_HOME}/logs"
+export PYTHONPATH="${PROJECT_HOME}/scripts:${PYTHONPATH:-}"
+
+python "${PROJECT_HOME}/scripts/01_setup_project.py"

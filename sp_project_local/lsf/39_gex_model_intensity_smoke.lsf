@@ -1,0 +1,66 @@
+#!/bin/bash
+#BSUB -J gex_model_intensity_smoke
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q gpuexpress
+#BSUB -n 4
+#BSUB -gpu "num=1"
+#BSUB -R "select[h100nvl] span[hosts=1] rusage[mem=12000]"
+#BSUB -W 00:20
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.0.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.0.stderr
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate /sc/arion/work/huangl21/conda_envs/omicverse-gpu
+module load cuda || true
+export CELLPOSE_LOCAL_MODELS_PATH=/sc/arion/work/huangl21/cellpose_models
+export CUDA_LAUNCH_BLOCKING=1
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR"
+python - <<'PY'
+from pathlib import Path
+import numpy as np
+import scipy.sparse
+import tifffile
+from omicverse.external.bin2cell import cellseg
+
+src = Path('/sc/arion/work/huangl21/sp_project/results/batch_v2_corrected/samples/SC000895-R4/gex_compare/flow04_prob0/gex_counts.tiff')
+with tifffile.TiffFile(src) as tif:
+    image = tif.asarray().astype(np.float32)
+h, w = image.shape[:2]
+best = None
+for y in range(0, max(h - 1024, 1), 1024):
+    for x in range(0, max(w - 1024, 1), 1024):
+        tile = image[y:y+1024, x:x+1024]
+        score = int((tile > 0).sum())
+        if best is None or score > best[0]:
+            best = (score, y, x, tile.copy())
+if best is None or best[0] == 0:
+    raise RuntimeError('No nonzero GEX tile')
+tile = best[3]
+log_tile = np.log1p(tile)
+lo, hi = np.percentile(log_tile[log_tile > 0], [1, 99.5])
+norm_tile = np.clip((log_tile - lo) / max(hi - lo, 1e-6), 0, 1) * 255
+variants = {'raw': tile, 'log1p_norm': norm_tile}
+models = {'cyto': '2D_versatile_he', 'nuclei': '2D_versatile_fluo'}
+passed = []
+for vname, arr in variants.items():
+    image_path = Path('/sc/arion/scratch/huangl21/sp_project') / f'gex_{vname}.tiff'
+    tifffile.imwrite(image_path, np.asarray(arr, dtype=np.uint8))
+    for mname, hint in models.items():
+        out = image_path.with_name(f'gex_{vname}_{mname}.npz')
+        cellseg(str(image_path), str(out), stardist_model=hint,
+                backend='cellpose', block_size=1024, min_overlap=0, context=0,
+                gpu=True, show_progress=True, flow_threshold=0.4,
+                prob_thresh=0.01)
+        labels = scipy.sparse.load_npz(out)
+        n = int(labels.max())
+        print('variant=', vname, 'model=', mname, 'max_label=', n,
+              'nonzero_pixels=', int(labels.nnz), flush=True)
+        if n > 0:
+            passed.append((vname, mname, n))
+if not passed:
+    raise RuntimeError('No tested model/intensity combination produced labels')
+print('PASS combinations=', passed)
+PY

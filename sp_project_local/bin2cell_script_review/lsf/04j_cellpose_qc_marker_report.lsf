@@ -1,0 +1,29 @@
+#!/bin/bash
+#BSUB -J sp_cellpose_qc_report_R4
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q express
+#BSUB -n 1
+#BSUB -R "rusage[mem=32000]"
+#BSUB -W 01:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+GPU_ENV=/sc/arion/work/huangl21/conda_envs/omicverse-gpu
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-1}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "$GPU_ENV"
+set -a
+source "$PROJECT_HOME/config/paths.env"
+set +a
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}_qc_marker
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+
+python -u "$PROJECT_HOME/scripts/17_cellpose_qc_marker_report.py" \
+  --cell-h5ad "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_gex/SC000895-R4_cell_level_cellpose.h5ad" \
+  --raw-cell-h5ad "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_gex/SC000895-R4_cell_level_cellpose_raw_counts.h5ad" \
+  --gex-sweep-json "$PROJECT_HOME/results/pilot_v2/SC000895-R4/gex_parameter_sweep/gex_cellpose_parameter_sweep.json" \
+  --output-dir "$PROJECT_HOME/results/pilot_v2/SC000895-R4/cellpose_qc_marker_report"

@@ -1,0 +1,18 @@
+#BSUB -J sp_malignant_evidence_R1_R7
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 8
+#BSUB -R "span[hosts=1] rusage[mem=32000]"
+#BSUB -W 08:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+python -u "$PROJECT_HOME/scripts/61_malignant_epithelial_evidence_r1_r7.py"

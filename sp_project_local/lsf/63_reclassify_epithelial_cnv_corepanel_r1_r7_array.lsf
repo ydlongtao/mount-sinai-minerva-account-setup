@@ -1,0 +1,28 @@
+#!/bin/bash
+#BSUB -J "sp_epi_reclass[1-2]"
+#BSUB -P acc_DiseaseGeneCell
+#BSUB -q premium
+#BSUB -n 4
+#BSUB -R "rusage[mem=32000]"
+#BSUB -R "span[hosts=1]"
+#BSUB -W 04:00
+#BSUB -L /bin/bash
+#BSUB -o /sc/arion/work/huangl21/sp_project/logs/%J.%I.stdout
+#BSUB -e /sc/arion/work/huangl21/sp_project/logs/%J.%I.stderr
+
+set -euo pipefail
+PROJECT_HOME=/sc/arion/work/huangl21/sp_project
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate omicverse
+export TMPDIR=/sc/arion/scratch/huangl21/sp_project/${LSB_JOBID:-manual}
+mkdir -p "$TMPDIR" "$PROJECT_HOME/logs"
+export OMP_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+export OPENBLAS_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+export MKL_NUM_THREADS=${LSB_DJOB_NUMPROC:-4}
+export PYTHONPATH="$PROJECT_HOME/scripts:${PYTHONPATH:-}"
+SAMPLE=$(python - <<'PY'
+import os
+print(["SC000895-R1", "SC000895-R7"][int(os.environ.get("LSB_JOBINDEX", "1"))-1])
+PY
+)
+python -u "$PROJECT_HOME/scripts/68_reclassify_epithelial_cnv_corepanel_r1_r7.py" --sample "$SAMPLE"
