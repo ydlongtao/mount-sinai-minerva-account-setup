@@ -76,7 +76,7 @@ def main() -> None:
         HMM=True,
         HMM_type="i3",
         HMM_report_by="cell",
-        analysis_mode="samples",
+        analysis_mode="subclusters",
         denoise=True,
         cluster_by_groups=True,
         num_threads=max(1, int(os.environ.get("LSB_DJOB_NUMPROC", "8"))),
