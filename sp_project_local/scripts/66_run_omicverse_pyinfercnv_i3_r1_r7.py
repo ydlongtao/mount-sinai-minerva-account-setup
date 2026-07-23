@@ -10,17 +10,16 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import infercnvpy as legacy_cnv
 import numpy as np
 import omicverse as ov
 import pandas as pd
+from pyinfercnv.io.genome import load_gene_positions
 import scanpy as sc
 
 PROJECT = Path(os.environ.get("SP_PROJECT_HOME", "/sc/arion/work/huangl21/sp_project"))
 ROOT = PROJECT / "results" / "segmented_official_v1"
 INPUT_DIR = ROOT / "analysis_coarse" / "samples"
 REF_TABLE = ROOT / "infercnv_reference_r1_r7" / "reference_cells_for_infercnvpy.csv.gz"
-GTF = Path(os.environ.get("SP_HG38_REF", "/sc/arion/work/huangl21/references/hg38/gencode38")) / "gencode.v38.primary_assembly.annotation.gtf.gz"
 MAIN_TYPES = {"endothelial", "fibroblast_stromal", "smooth_muscle_pericyte"}
 
 
@@ -37,7 +36,6 @@ def main() -> None:
     adata = sc.read_h5ad(INPUT_DIR / sample / f"{sample}_official_cell_level_analysis_coarse.h5ad")
     adata.obs_names = adata.obs_names.astype(str)
     adata.var_names = adata.var_names.astype(str)
-    adata.var_names_make_unique()
     if "counts" not in adata.layers:
         raise RuntimeError(f"{sample}: counts layer is required")
 
@@ -57,8 +55,14 @@ def main() -> None:
     adata.obs["cnv_group"] = np.where(is_reference, "main_reference", np.where(is_malignant, "malignant_epithelial_candidate", "other"))
     adata.obs["cnv_group"] = pd.Categorical(adata.obs["cnv_group"], categories=["main_reference", "malignant_epithelial_candidate", "other"])
 
-    # Use the validated GENCODE v38 coordinates. The counts layer remains raw.
-    legacy_cnv.io.genomic_position_from_gtf(GTF, adata=adata, gtf_gene_id="gene_name", inplace=True)
+    # Use py-inferCNV's bundled GRCh38 coordinates. The counts layer remains raw.
+    positions = load_gene_positions("hg38").drop_duplicates("gene_symbol").set_index("gene_symbol")
+    gene_symbols = adata.var_names.astype(str)
+    matched = positions.reindex(gene_symbols)
+    adata.var["chromosome"] = matched["chromosome"].to_numpy()
+    adata.var["start"] = matched["start"].to_numpy()
+    adata.var["end"] = matched["end"].to_numpy()
+    adata.var_names_make_unique()
     required = adata.var[["chromosome", "start", "end"]].notna().all(axis=1).to_numpy()
     required &= ~adata.var["chromosome"].isin(["chrX", "chrY", "chrM"]).to_numpy()
     adata = adata[:, required].copy()
@@ -86,7 +90,7 @@ def main() -> None:
         "sample": sample, "backend": "omicverse.ov.single.CNV -> pyinfercnv",
         "pyinfercnv_hmm": "i3", "reference_group": "main_reference",
         "tumor_candidate_group": "malignant_epithelial_candidate",
-        "reference_types": sorted(MAIN_TYPES), "gtf": str(GTF),
+        "reference_types": sorted(MAIN_TYPES), "gene_position_source": "pyinfercnv bundled hg38",
         "counts_layer": "counts", "exclude_chromosomes": ["chrX", "chrY", "chrM"],
     })
 
